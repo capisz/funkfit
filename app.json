@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "FunkFit",
+    "slug": "funkfit",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/pepper-icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "funkfit",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.funkfit.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#14A9AE",
+        "foregroundImage": "./assets/images/pepper-icon.png"
+      },
+      "package": "com.funkfit.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/pepper-icon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
