@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -15,6 +15,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function AdjustmentDownScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const params = useLocalSearchParams<{ delta?: string; newTarget?: string }>();
+  const delta = Math.abs(Number(params.delta)) || 150;
+  const newTarget = Number(params.newTarget) || 1800;
 
   return (
     <View style={styles.container}>
@@ -53,13 +56,13 @@ export default function AdjustmentDownScreen() {
             </Text>
             <Text style={[styles.description, { color: colors.textMuted }]}>
               Looks like you're resting today — and that's totally fine. Pepper
-              trimmed your target by 150 so you don't overeat on a low-burn day.
+              trimmed your target by {delta} so you don't overeat on a low-burn day.
             </Text>
 
             {/* New target pill */}
             <View style={styles.targetPill}>
               <Text style={styles.targetLabel}>New target</Text>
-              <Text style={styles.targetValue}>1,800 kcal</Text>
+              <Text style={styles.targetValue}>{newTarget.toLocaleString()} kcal</Text>
             </View>
 
             {/* Got it button */}

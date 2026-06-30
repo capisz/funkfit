@@ -20,7 +20,6 @@ function RootLayoutNav() {
         <Stack.Screen name="goal-hit" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="adjustment-popup" options={{ presentation: 'transparentModal', animation: 'fade' }} />
         <Stack.Screen name="adjustment-down" options={{ presentation: 'transparentModal', animation: 'fade' }} />
-        <Stack.Screen name="first-day" />
         <Stack.Screen name="progress" />
         <Stack.Screen name="notifications" />
       </Stack>

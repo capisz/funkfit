@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -15,6 +15,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function AdjustmentPopupScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const params = useLocalSearchParams<{ delta?: string; newTarget?: string }>();
+  const delta = Math.abs(Number(params.delta)) || 200;
+  const newTarget = Number(params.newTarget) || 0;
 
   return (
     <View style={styles.container}>
@@ -49,11 +52,11 @@ export default function AdjustmentPopupScreen() {
         >
           <View style={styles.cardContent}>
             <Text style={[styles.heading, { color: colors.text }]}>
-              You've earned 200 more calories!
+              You've earned {delta} more calories!
             </Text>
             <Text style={[styles.description, { color: colors.textMuted }]}>
-              You burned 650 active calories today — 200 more than your average.
-              Pepper raised your target so you stay fueled.
+              You moved more than usual today, so Pepper raised your target
+              {newTarget ? ` to ${newTarget.toLocaleString()} kcal` : ''} to keep you fueled.
             </Text>
 
             {/* Food suggestion card */}

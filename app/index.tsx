@@ -2,10 +2,18 @@ import React, { useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useData } from '../contexts/DataContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { hydrateOnboardingDraft } from '../lib/onboardingDraft';
 
 export default function SplashScreen() {
   const router = useRouter();
   const { hydrated, profile } = useData();
+  const { colors } = useTheme();
+
+  // Restore any in-progress onboarding draft before we might route into it.
+  useEffect(() => {
+    hydrateOnboardingDraft();
+  }, []);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -17,21 +25,23 @@ export default function SplashScreen() {
   }, [router, hydrated, profile]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.center}>
         <Image
           source={require('../assets/images/pepper.png')}
           style={styles.mascot}
           resizeMode="contain"
         />
-        <Text style={styles.wordmark}>funkfit</Text>
-        <Text style={styles.subtitle}>the coach that adapts to you</Text>
+        <Text style={[styles.wordmark, { color: colors.teal }]}>funkfit</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+          the coach that adapts to you
+        </Text>
       </View>
 
       <View style={styles.dotsContainer}>
-        <View style={[styles.dot, { backgroundColor: '#14A9AE' }]} />
-        <View style={[styles.dot, { backgroundColor: '#9AD9D6' }]} />
-        <View style={[styles.dot, { backgroundColor: '#E0D7C6' }]} />
+        <View style={[styles.dot, { backgroundColor: colors.teal }]} />
+        <View style={[styles.dot, { backgroundColor: colors.tealSoft }]} />
+        <View style={[styles.dot, { backgroundColor: colors.ringTrack }]} />
       </View>
     </View>
   );
@@ -40,7 +50,6 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F4EEE1',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -55,13 +64,11 @@ const styles = StyleSheet.create({
   wordmark: {
     fontSize: 40,
     fontWeight: '900',
-    color: '#14A9AE',
     letterSpacing: -1.2,
   },
   subtitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#9A968B',
     marginTop: 4,
   },
   dotsContainer: {

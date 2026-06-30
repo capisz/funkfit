@@ -5,3 +5,4 @@ export * from './profile';
 export * from './calories';
 export * from './weight';
 export * from './daily-summary';
+export * from './streak';

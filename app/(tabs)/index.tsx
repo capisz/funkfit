@@ -1,20 +1,47 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, StyleSheet, DimensionValue } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useData } from '../../contexts/DataContext';
 import {
+  calculateDailyCalorieTarget,
   calculateWeeklyWeightTrend,
+  computeStreak,
   estimateGoalDaysRemaining,
   getLatestWeightEntry,
   toLocalDateKey,
 } from '../../lib/core';
 
+function coachMessage(opts: {
+  firstName: string;
+  hasEverLogged: boolean;
+  remaining: number;
+  streak: number;
+  hour: number;
+}): string {
+  const { firstName, hasEverLogged, remaining, streak, hour } = opts;
+  if (!hasEverLogged) {
+    return `Welcome, ${firstName}! Log your first meal and I'll start adapting your target to your day.`;
+  }
+  if (remaining < 0) {
+    return `You're ${Math.abs(remaining).toLocaleString()} kcal over today. No stress — tomorrow's a fresh start.`;
+  }
+  if (streak >= 3) {
+    return `${streak}-day streak! 🔥 ${remaining.toLocaleString()} kcal left — keep it rolling.`;
+  }
+  if (hour >= 17) {
+    return `Evening check-in: ${remaining.toLocaleString()} kcal left. Room for a good dinner.`;
+  }
+  const partOfDay = hour < 11 ? 'Morning' : 'Afternoon';
+  return `${partOfDay}! You've got ${remaining.toLocaleString()} kcal left today — room for a solid meal.`;
+}
+
 export default function TodayScreen() {
   const { mode, colors, toggleTheme } = useTheme();
   const router = useRouter();
-  const { profile, weights, goalWeightKg, getDailySummary } = useData();
+  const { profile, weights, goalWeightKg, foodsByDate, getDailySummary } = useData();
 
   const today = toLocalDateKey();
   const summary = getDailySummary(today);
@@ -24,6 +51,52 @@ export default function TodayScreen() {
   const activeEnergy = Math.round(summary.healthMetrics?.activeEnergyKcal ?? 0);
   const steps = summary.healthMetrics?.steps ?? null;
   const adapted = summary.calorieTarget?.source === 'health-metrics';
+
+  // Logging streak, derived from days that have any food entries.
+  const loggedDates = useMemo(
+    () => Object.keys(foodsByDate).filter((d) => (foodsByDate[d]?.length ?? 0) > 0),
+    [foodsByDate]
+  );
+  const streak = useMemo(() => computeStreak(loggedDates, today), [loggedDates, today]);
+  const hasEverLogged = loggedDates.length > 0;
+
+  // How far the health-adjusted target moved from the activity-level baseline.
+  const adjustmentDelta = useMemo(() => {
+    if (!profile || !adapted) return 0;
+    const base = calculateDailyCalorieTarget(profile, null).goalCalories;
+    return target - base;
+  }, [profile, adapted, target]);
+
+  // Pepper's contextual moment-screens — each fires at most once per day.
+  useEffect(() => {
+    if (!profile) return;
+    let cancelled = false;
+    (async () => {
+      if (target > 0 && eaten >= target) {
+        const key = `funkfit:v1:goalHitShown:${today}`;
+        if (!(await AsyncStorage.getItem(key))) {
+          await AsyncStorage.setItem(key, '1');
+          if (!cancelled) router.push('/goal-hit');
+          return; // don't stack a second modal on top
+        }
+      }
+      if (adapted && Math.abs(adjustmentDelta) >= 75) {
+        const key = `funkfit:v1:adjustShown:${today}`;
+        if (!(await AsyncStorage.getItem(key))) {
+          await AsyncStorage.setItem(key, '1');
+          if (!cancelled) {
+            router.push({
+              pathname: adjustmentDelta > 0 ? '/adjustment-popup' : '/adjustment-down',
+              params: { delta: String(Math.round(adjustmentDelta)), newTarget: String(target) },
+            });
+          }
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile, target, eaten, adapted, adjustmentDelta, today, router]);
 
   const protein = Math.round(summary.consumed.protein);
   const carbs = Math.round(summary.consumed.carbs);
@@ -59,9 +132,19 @@ export default function TodayScreen() {
             <Text style={[styles.dateText, { color: colors.textMuted }]}>{dateText}</Text>
             <Text style={[styles.greeting, { color: colors.text }]}>Hi, {firstName}</Text>
           </View>
-          <TouchableOpacity onPress={toggleTheme} style={[styles.avatar, { backgroundColor: colors.teal }]}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={() => router.push('/streak')}
+              style={[styles.streakChip, { backgroundColor: colors.sandBg }]}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.streakFlame}>🔥</Text>
+              <Text style={[styles.streakCount, { color: colors.sandText }]}>{streak.current}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={toggleTheme} style={[styles.avatar, { backgroundColor: colors.teal }]}>
+              <Text style={styles.avatarText}>{initial}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Calorie Ring */}
@@ -147,9 +230,13 @@ export default function TodayScreen() {
               <Text style={[styles.coachChevron, { color: mode === 'dark' ? '#3C7C80' : '#7FCFCD' }]}>{'›'}</Text>
             </View>
             <Text style={[styles.coachMsg, { color: colors.tealTextDark }]}>
-              {remaining >= 0
-                ? `You've got ${remaining.toLocaleString()} kcal left today — room for a solid meal.`
-                : `You're ${Math.abs(remaining).toLocaleString()} kcal over today. Tomorrow's a fresh start.`}
+              {coachMessage({
+                firstName,
+                hasEverLogged,
+                remaining,
+                streak: streak.current,
+                hour: new Date().getHours(),
+              })}
             </Text>
           </View>
         </TouchableOpacity>
@@ -230,6 +317,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 22, paddingTop: 62, paddingBottom: 4 },
   dateText: { fontSize: 13.5, fontWeight: '700' },
   greeting: { fontSize: 24, fontWeight: '900', lineHeight: 28, marginTop: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  streakChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 11, height: 36, borderRadius: 18 },
+  streakFlame: { fontSize: 15 },
+  streakCount: { fontSize: 16, fontWeight: '900' },
   avatar: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', shadowColor: 'rgba(20,169,174,0.22)', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 12, elevation: 6 },
   avatarText: { color: '#fff', fontWeight: '800', fontSize: 18 },
 

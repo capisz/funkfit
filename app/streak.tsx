@@ -10,9 +10,10 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
+import { useData } from '../contexts/DataContext';
+import { computeStreak, toLocalDateKey } from '../lib/core';
 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-const COMPLETED_DAYS = [true, true, true, true, true, false, false];
 
 interface Badge {
   name: string;
@@ -20,15 +21,22 @@ interface Badge {
   earned: boolean;
 }
 
-const BADGES: Badge[] = [
-  { name: 'First week', description: '7 days logged', earned: true },
-  { name: 'On target', description: 'Hit your target 5x', earned: true },
-  { name: '30 days', description: 'Log for 30 days straight', earned: false },
-];
-
 export default function StreakScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { foodsByDate } = useData();
+
+  const loggedDates = Object.keys(foodsByDate).filter(
+    (d) => (foodsByDate[d]?.length ?? 0) > 0
+  );
+  const streak = computeStreak(loggedDates, toLocalDateKey());
+  const completedDays = streak.thisWeek;
+
+  const badges: Badge[] = [
+    { name: 'First week', description: '7 days logged', earned: loggedDates.length >= 7 },
+    { name: 'On a roll', description: '5-day streak', earned: streak.longest >= 5 },
+    { name: '30 days', description: 'Log for 30 days straight', earned: streak.longest >= 30 },
+  ];
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
@@ -65,8 +73,10 @@ export default function StreakScreen() {
               resizeMode="contain"
             />
             <View style={styles.heroContent}>
-              <Text style={styles.heroNumber}>12</Text>
-              <Text style={styles.heroLabel}>day logging streak</Text>
+              <Text style={styles.heroNumber}>{streak.current}</Text>
+              <Text style={styles.heroLabel}>
+                {streak.current === 1 ? 'day streak — keep going' : 'day logging streak'}
+              </Text>
             </View>
           </View>
         </View>
@@ -86,7 +96,7 @@ export default function StreakScreen() {
         >
           <View style={styles.daysRow}>
             {DAYS.map((day, index) => {
-              const completed = COMPLETED_DAYS[index];
+              const completed = completedDays[index];
               return (
                 <View key={`${day}-${index}`} style={styles.dayItem}>
                   <View
@@ -125,7 +135,7 @@ export default function StreakScreen() {
           BADGES EARNED
         </Text>
         <View style={styles.badgesContainer}>
-          {BADGES.map((badge) => (
+          {badges.map((badge) => (
             <View
               key={badge.name}
               style={[

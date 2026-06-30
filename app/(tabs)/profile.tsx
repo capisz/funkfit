@@ -22,6 +22,7 @@ import {
   parsePositiveNumber,
   weightToKg,
 } from '../../lib/core';
+import EditProfileModal from '../../components/EditProfileModal';
 
 const GOAL_LABELS: Record<Goal, string> = {
   lose: 'Lose weight',
@@ -66,6 +67,7 @@ export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [goalModal, setGoalModal] = useState(false);
   const [goalInput, setGoalInput] = useState('');
+  const [editVisible, setEditVisible] = useState(false);
 
   const unit: WeightUnit = profile?.weightUnit ?? 'lbs';
   const initial = (profile?.name || 'Y').charAt(0).toUpperCase();
@@ -115,14 +117,22 @@ export default function ProfileScreen() {
     >
       <Text style={[styles.title, { color: colors.text }]}>You</Text>
 
-      {/* Profile Card */}
-      <View style={[styles.profileCard, { backgroundColor: colors.card }]}>
+      {/* Profile Card — tap to edit */}
+      <TouchableOpacity
+        style={[styles.profileCard, { backgroundColor: colors.card }]}
+        onPress={() => profile && setEditVisible(true)}
+        activeOpacity={0.8}
+        disabled={!profile}
+      >
         <View style={[styles.profileAvatar, { backgroundColor: colors.teal }]}>
           <Text style={styles.profileAvatarText}>{initial}</Text>
         </View>
         <Text style={[styles.profileName, { color: colors.text }]}>{profile?.name || 'You'}</Text>
         <Text style={[styles.profileMeta, { color: colors.textMuted }]}>{metaLine}</Text>
-      </View>
+        {profile && (
+          <Text style={[styles.editHint, { color: colors.teal }]}>Edit profile</Text>
+        )}
+      </TouchableOpacity>
 
       {/* Plan Section */}
       <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>PLAN</Text>
@@ -138,6 +148,13 @@ export default function ProfileScreen() {
           label="Goal"
           value={profile ? GOAL_LABELS[profile.goal] : '—'}
           colors={colors}
+          onPress={() => profile && setEditVisible(true)}
+        />
+        <SettingRow
+          label="Activity"
+          value={profile ? ACTIVITY_LEVEL_OPTIONS[profile.activityLevel].label : '—'}
+          colors={colors}
+          onPress={() => profile && setEditVisible(true)}
           isLast
         />
       </View>
@@ -156,6 +173,12 @@ export default function ProfileScreen() {
               thumbColor="#FFFFFF"
             />
           }
+        />
+        <SettingRow
+          label="Preview Pepper's reminders"
+          value={'›'}
+          colors={colors}
+          onPress={() => router.push('/notifications')}
         />
         <SettingRow
           label="Dark mode"
@@ -204,6 +227,15 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit profile modal */}
+      {profile && (
+        <EditProfileModal
+          visible={editVisible}
+          onClose={() => setEditVisible(false)}
+          profile={profile}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -218,6 +250,7 @@ const styles = StyleSheet.create({
   profileAvatarText: { color: '#FFFFFF', fontSize: 30, fontWeight: '700' },
   profileName: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
   profileMeta: { fontSize: 14 },
+  editHint: { fontSize: 13, fontWeight: '800', marginTop: 10 },
 
   sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 8, marginLeft: 4 },
   settingsCard: { borderRadius: 16, overflow: 'hidden', marginBottom: 24 },
